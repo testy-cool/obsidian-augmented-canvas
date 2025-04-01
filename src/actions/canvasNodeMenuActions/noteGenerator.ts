@@ -60,12 +60,33 @@ export function noteGenerator(
 ) {
 	const canCallAI = () => {
 		// return true;
-		if (!settings.apiKey) {
+		if (!settings.apiKey && !getActiveProviderApiKey()) {
 			new Notice("Please set your OpenAI API key in the plugin settings");
 			return false;
 		}
 
 		return true;
+	};
+
+	const getActiveProviderApiKey = () => {
+		if (!settings.activeProvider) return null;
+		
+		const activeProvider = settings.llmProviders.find(provider => 
+			provider.name === settings.activeProvider
+		);
+		
+		// Just use the main API key since we've simplified the interface
+		return settings.apiKey || activeProvider?.apiKey || null;
+	};
+	
+	const getActiveProviderBaseUrl = () => {
+		if (!settings.activeProvider) return undefined;
+		
+		const activeProvider = settings.llmProviders.find(provider => 
+			provider.name === settings.activeProvider
+		);
+		
+		return activeProvider?.baseUrl || undefined;
 	};
 
 	const getActiveCanvas = () => {
@@ -277,12 +298,13 @@ export function noteGenerator(
 
 				let firstDelta = true;
 				await streamResponse(
-					settings.apiKey,
+					settings.activeProvider ? getActiveProviderApiKey()! : settings.apiKey,
 					// settings.apiModel,
 					messages,
 					{
 						model: settings.apiModel,
 						max_tokens: settings.maxResponseTokens || undefined,
+						baseUrl: getActiveProviderBaseUrl(),
 						// max_tokens: getTokenLimit(settings) - tokenCount - 1,
 					},
 					// {
@@ -386,7 +408,7 @@ export function noteGenerator(
 
 export function getTokenLimit(settings: AugmentedCanvasSettings) {
 	const model =
-		chatModelByName(settings.apiModel) || CHAT_MODELS.GPT_4_1106_PREVIEW;
+		chatModelByName(settings.apiModel) || CHAT_MODELS.GPT_4O;
 	const tokenLimit = settings.maxInputTokens
 		? Math.min(settings.maxInputTokens, model.tokenLimit)
 		: model.tokenLimit;

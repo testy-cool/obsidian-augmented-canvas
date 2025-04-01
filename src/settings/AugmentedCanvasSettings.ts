@@ -1,10 +1,32 @@
 import { FuseIndex } from "fuse.js";
-import { CHAT_MODELS, IMAGE_MODELS } from "src/openai/models";
+import { CHAT_MODELS } from "src/openai/models";
 
 export interface SystemPrompt {
 	id: number;
 	act: string;
 	prompt: string;
+}
+
+export interface LLMProvider {
+	/**
+	 * Name of the provider
+	 */
+	name: string;
+
+	/**
+	 * Base URL for the provider's API
+	 */
+	baseUrl: string;
+
+	/**
+	 * API key for the provider
+	 */
+	apiKey: string;
+
+	/**
+	 * Whether this provider is currently active
+	 */
+	isActive: boolean;
 }
 
 export interface AugmentedCanvasSettings {
@@ -74,11 +96,6 @@ export interface AugmentedCanvasSettings {
 	relevantQuestionsSystemPrompt: string;
 
 	/**
-	 * Model used for image generation
-	 */
-	imageModel: string;
-
-	/**
 	 * The path where generated images are stored
 	 */
 	imagesPath?: string;
@@ -87,6 +104,16 @@ export interface AugmentedCanvasSettings {
 	 * The Youtube API Key
 	 */
 	youtubeApiKey: string;
+
+	/**
+	 * List of additional LLM providers
+	 */
+	llmProviders: LLMProvider[];
+
+	/**
+	 * Currently active provider (empty string means default OpenAI)
+	 */
+	activeProvider: string;
 }
 // export const DEFAULT_SYSTEM_PROMPT = `
 // You are a critical-thinking assistant bot.
@@ -123,7 +150,7 @@ Priories questions that connect different topics together.
 
 export const DEFAULT_SETTINGS: AugmentedCanvasSettings = {
 	apiKey: "",
-	apiModel: CHAT_MODELS.GPT_4_0.name,
+	apiModel: CHAT_MODELS.GPT_4O.name,
 	temperature: 1,
 	systemPrompt: DEFAULT_SYSTEM_PROMPT,
 	debug: false,
@@ -135,15 +162,12 @@ export const DEFAULT_SETTINGS: AugmentedCanvasSettings = {
 	flashcardsSystemPrompt: FLASHCARDS_SYSTEM_PROMPT,
 	insertRelevantQuestionsFilesCount: 10,
 	relevantQuestionsSystemPrompt: RELEVANT_QUESTION_SYSTEM_PROMPT,
-	imageModel: IMAGE_MODELS.DALL_E_3.name,
 	imagesPath: undefined,
 	youtubeApiKey: "",
+	llmProviders: [],
+	activeProvider: "",
 };
 
 export function getModels() {
 	return Object.entries(CHAT_MODELS).map(([, value]) => value.name);
-}
-
-export function getImageModels() {
-	return Object.entries(IMAGE_MODELS).map(([, value]) => value.name);
 }

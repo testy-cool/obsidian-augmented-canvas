@@ -47,6 +47,9 @@ async function getVideoSubtitles(
 	// 	console.error("Error fetching video captions:", error);
 	// 	return [];
 	// }
+	
+	// This function is currently commented out but still needs to return a value
+	return Promise.resolve([]);
 }
 
 export const runYoutubeCaptions = async (

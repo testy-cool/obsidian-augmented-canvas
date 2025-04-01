@@ -223,3 +223,42 @@ ${await cachedReadFile(app, fileOrFolder)}
 
 	return filesContent.join("\n\n");
 };
+
+/**
+ * Converts a base64 string to an ArrayBuffer
+ */
+export function getImageBuffer(base64String: string): ArrayBuffer {
+	const byteCharacters = atob(base64String);
+	const byteNumbers = new Array(byteCharacters.length);
+	
+	for (let i = 0; i < byteCharacters.length; i++) {
+		byteNumbers[i] = byteCharacters.charCodeAt(i);
+	}
+	
+	return new Uint8Array(byteNumbers).buffer;
+}
+
+/**
+ * Saves an image buffer to a file in the specified folder
+ */
+export async function saveImageToFile(app: App, buffer: ArrayBuffer, folderPath: string): Promise<TFile | null> {
+	try {
+		// Create folder if it doesn't exist
+		const folderExists = app.vault.getAbstractFileByPath(folderPath) instanceof TFolder;
+		if (!folderExists) {
+			await app.vault.createFolder(folderPath);
+		}
+		
+		// Generate a filename with timestamp
+		const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+		const fileName = `image-${timestamp}.png`;
+		const filePath = `${folderPath}/${fileName}`;
+		
+		// Create the file
+		const file = await app.vault.createBinary(filePath, buffer);
+		return file;
+	} catch (error) {
+		console.error("Error saving image to file:", error);
+		return null;
+	}
+}

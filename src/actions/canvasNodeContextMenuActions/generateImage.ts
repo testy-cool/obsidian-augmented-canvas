@@ -1,90 +1,98 @@
-import { App, Notice, TFile } from "obsidian";
-import { AugmentedCanvasSettings } from "../../settings/AugmentedCanvasSettings";
-import { createImage } from "../../utils/chatgpt";
-import {
-	getActiveCanvas,
-	getActiveCanvasNodes,
-	getCanvasActiveNoteText,
-	getImageSaveFolderPath,
-} from "../../utils";
-import { saveBase64Image } from "../../obsidian/imageUtils";
-import { createNode } from "../../obsidian/canvas-patches";
-import { generateFileName, updateNodeAndSave } from "../../obsidian/fileUtil";
+import { App, ItemView, Notice, TFile, TFolder } from "obsidian";
+import { AugmentedCanvasSettings } from "src/settings/AugmentedCanvasSettings";
+import { createImage } from "src/utils/chatgpt";
+import { Canvas, CanvasNode } from "src/obsidian/canvas-internal";
+import { addImageNode } from "src/utils";
+import { getImageBuffer, saveImageToFile } from "src/obsidian/fileUtil";
 
-export const handleGenerateImage = async (
+export async function handleGenerateImage(
 	app: App,
-	settings: AugmentedCanvasSettings
-) => {
-	new Notice(`Generating image using ${settings.imageModel}...`);
+	settings: AugmentedCanvasSettings,
+	node?: CanvasNode
+) {
+	// Get API key
+	const apiKey = settings.activeProvider 
+		? settings.llmProviders.find(p => p.name === settings.activeProvider)?.apiKey || settings.apiKey
+		: settings.apiKey;
+	
+	const baseUrl = settings.activeProvider
+		? settings.llmProviders.find(p => p.name === settings.activeProvider)?.baseUrl
+		: undefined;
 
-	const canvas = getActiveCanvas(app);
-	if (!canvas) return;
+	if (!apiKey) {
+		new Notice("Please set your API key in the plugin settings");
+		return;
+	}
 
-	const activeCanvasNodes = getActiveCanvasNodes(app);
-	if (!activeCanvasNodes || activeCanvasNodes.length !== 1) return;
+	// Get active canvas
+	const canvasView = app.workspace.getActiveViewOfType(ItemView) as any;
+	if (!canvasView || !canvasView.canvas) {
+		new Notice("Active view is not a canvas");
+		return;
+	}
 
-	const parentNode = activeCanvasNodes[0];
+	const activeItem = canvasView.canvas;
 
-	const nodeText = await getCanvasActiveNoteText(app);
-	if (!nodeText) return;
+	// Get selected node or clicked node
+	if (!node) {
+		const selectedNodes = Array.from(activeItem.selection.values());
+		if (selectedNodes.length !== 1) {
+			new Notice("Please select a single card");
+			return;
+		}
 
-	const IMAGE_WIDTH = parentNode.width;
-	const IMAGE_HEIGHT = IMAGE_WIDTH * (1024 / 1792) + 20;
+		node = selectedNodes[0] as CanvasNode;
+	}
 
-	const node = createNode(
-		canvas,
-		{
-			text: `\`Calling AI (${settings.imageModel})...\``,
-			size: {
-				width: IMAGE_WIDTH,
-				height: IMAGE_HEIGHT,
-			},
-		},
-		parentNode
-	);
+	// Get the text from the selected node
+	const nodeContent = node.text;
+	// console.log({ canvasView, nodeContent });
 
-	const b64Image = await createImage(settings.apiKey, nodeText, {
-		model: settings.imageModel,
-	});
+	// Generate image from the selected node
+	new Notice("Generating image...");
+	try {
+		const imageData = await createImage(
+			apiKey,
+			nodeContent,
+			{
+				isVertical: false,
+				model: "dall-e-3",
+				baseUrl: baseUrl
+			}
+		);
 
-	const imageFileName = generateFileName("AI-Image");
-	const imageFolder = await getImageSaveFolderPath(app, settings);
-	// console.log({ imageFolder });
-	await saveBase64Image(app, `${imageFolder}/${imageFileName}.png`, b64Image);
-	new Notice(`Generating image "${imageFileName}" done successfully.`);
+		if (!imageData) {
+			new Notice("Failed to generate image");
+			return;
+		}
 
-	updateNodeAndSave(canvas, node, {
-		text: `![[${imageFolder}/${imageFileName}.png]]`,
-	});
+		// Convert base64 to buffer
+		const buffer = getImageBuffer(imageData);
 
-	// TODO : For now Obsidian API to .createFileNode is bugged
-	// canvas.removeNode(node);
+		// Check if we have a path to save the image
+		if (!settings.imagesPath) {
+			// Add image directly to the canvas
+			addImageNode(activeItem, buffer, "", node);
+			return;
+		}
 
-	// await sleep(100);
+		// Save image to file
+		const imageFile = await saveImageToFile(
+			app,
+			buffer,
+			settings.imagesPath
+		);
 
-	// const file = app.vault.getAbstractFileByPath(
-	// 	`${imageFileName}.png`
-	// ) as TFile;
-	// console.log({ file });
+		if (!imageFile) {
+			// Add image directly to the canvas
+			addImageNode(activeItem, buffer, "", node);
+			return;
+		}
 
-	// const node2 = createNode(
-	// 	canvas,
-	// 	{
-	// 		type: "file",
-	// 		file,
-	// 		size: {
-	// 			width: IMAGE_WIDTH,
-	// 			height: IMAGE_HEIGHT,
-	// 		},
-	// 	},
-	// 	parentNode
-	// );
-	// node2.moveAndResize({
-	// 	size: {
-	// 		width: IMAGE_WIDTH,
-	// 		height: IMAGE_HEIGHT,
-	// 	},
-	// });
-
-	canvas.requestSave();
-};
+		// Add image node to canvas
+		addImageNode(activeItem, null, imageFile.path, node);
+	} catch (error) {
+		console.error("Error generating image:", error);
+		new Notice(`Failed to generate image: ${error.message}`);
+	}
+}

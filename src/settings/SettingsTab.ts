@@ -9,11 +9,12 @@ import {
 } from "obsidian";
 import ChatStreamPlugin from "./../AugmentedCanvasPlugin";
 import {
+	LLMProvider,
 	SystemPrompt,
-	getImageModels,
 	getModels,
 } from "./AugmentedCanvasSettings";
 import { initLogDebug } from "src/logDebug";
+import { EditProviderModal } from "src/Modals/EditProviderModal";
 
 export class SettingsTab extends PluginSettingTab {
 	plugin: ChatStreamPlugin;
@@ -28,45 +29,68 @@ export class SettingsTab extends PluginSettingTab {
 
 		containerEl.empty();
 
+		// Model input - direct text input instead of dropdown
 		new Setting(containerEl)
 			.setName("Model")
-			.setDesc("Select the GPT model to use.")
-			.addDropdown((cb) => {
-				getModels().forEach((model) => {
-					cb.addOption(model, model);
-				});
-				cb.setValue(this.plugin.settings.apiModel);
-				cb.onChange(async (value) => {
-					this.plugin.settings.apiModel = value;
-					await this.plugin.saveSettings();
-				});
+			.setDesc("Enter the model ID (e.g., openai/gpt-4o, anthropic/claude-3-opus)")
+			.addText((text) => {
+				text.setPlaceholder("openai/gpt-4o")
+					.setValue(this.plugin.settings.apiModel)
+					.onChange(async (value) => {
+						this.plugin.settings.apiModel = value;
+						await this.plugin.saveSettings();
+					});
 			});
 
-		new Setting(containerEl)
-			.setName("Image Model")
-			.setDesc("Select the GPT model to generate images.")
-			.addDropdown((cb) => {
-				getImageModels().forEach((model) => {
-					cb.addOption(model, model);
-				});
-				cb.setValue(this.plugin.settings.imageModel);
-				cb.onChange(async (value) => {
-					this.plugin.settings.imageModel = value;
-					await this.plugin.saveSettings();
-				});
-			});
-
+		// API Key input
 		new Setting(containerEl)
 			.setName("API key")
-			.setDesc(
-				"The API key to use when making requests - Get from OpenAI"
-			)
+			.setDesc("Your API key for the selected provider")
 			.addText((text) => {
 				text.inputEl.type = "password";
 				text.setPlaceholder("API Key")
 					.setValue(this.plugin.settings.apiKey)
 					.onChange(async (value) => {
 						this.plugin.settings.apiKey = value;
+						await this.plugin.saveSettings();
+					});
+			});
+
+		// Provider URL input
+		new Setting(containerEl)
+			.setName("Provider URL")
+			.setDesc("Base URL for the API provider (e.g., https://openrouter.ai/api/v1)")
+			.addText((text) => {
+				// Get the current active provider's URL if available
+				const activeProvider = this.plugin.settings.llmProviders.find(
+					p => p.name === this.plugin.settings.activeProvider
+				);
+				
+				text.setPlaceholder("https://api.openai.com/v1")
+					.setValue(activeProvider?.baseUrl || "")
+					.onChange(async (value) => {
+						// Update or create a default provider
+						const defaultProvider = {
+							name: "default",
+							baseUrl: value,
+							apiKey: this.plugin.settings.apiKey,
+							isActive: true
+						};
+						
+						// Update the provider list
+						const existingIndex = this.plugin.settings.llmProviders.findIndex(
+							p => p.name === "default"
+						);
+						
+						if (existingIndex >= 0) {
+							this.plugin.settings.llmProviders[existingIndex] = defaultProvider;
+						} else {
+							this.plugin.settings.llmProviders = [defaultProvider];
+						}
+						
+						// Set as active provider
+						this.plugin.settings.activeProvider = "default";
+						
 						await this.plugin.saveSettings();
 					});
 			});
@@ -91,8 +115,6 @@ export class SettingsTab extends PluginSettingTab {
 			)
 			.addTextArea((component) => {
 				component.inputEl.rows = 6;
-				// component.inputEl.style.width = "300px";
-				// component.inputEl.style.fontSize = "10px";
 				component.inputEl.addClass("augmented-canvas-settings-prompt");
 				component.setValue(this.plugin.settings.systemPrompt);
 				component.onChange(async (value) => {
@@ -108,8 +130,6 @@ export class SettingsTab extends PluginSettingTab {
 			.setDesc(`The system prompt used to generate the flashcards file.`)
 			.addTextArea((component) => {
 				component.inputEl.rows = 6;
-				// component.inputEl.style.width = "300px";
-				// component.inputEl.style.fontSize = "10px";
 				component.inputEl.addClass("augmented-canvas-settings-prompt");
 				component.setValue(this.plugin.settings.flashcardsSystemPrompt);
 				component.onChange(async (value) => {
@@ -125,8 +145,6 @@ export class SettingsTab extends PluginSettingTab {
 			)
 			.addTextArea((component) => {
 				component.inputEl.rows = 6;
-				// component.inputEl.style.width = "300px";
-				// component.inputEl.style.fontSize = "10px";
 				component.inputEl.addClass("augmented-canvas-settings-prompt");
 				component.setValue(
 					this.plugin.settings.relevantQuestionsSystemPrompt
@@ -222,21 +240,6 @@ export class SettingsTab extends PluginSettingTab {
 						}
 					})
 			);
-
-		// new Setting(containerEl)
-		// 	.setName("API URL")
-		// 	.setDesc(
-		// 		"The chat completions URL to use. You probably won't need to change this."
-		// 	)
-		// 	.addText((text) => {
-		// 		text.inputEl.style.width = "300px";
-		// 		text.setPlaceholder("API URL")
-		// 			.setValue(this.plugin.settings.apiUrl)
-		// 			.onChange(async (value) => {
-		// 				this.plugin.settings.apiUrl = value;
-		// 				await this.plugin.saveSettings();
-		// 			});
-		// 	});
 
 		new Setting(containerEl)
 			.setName("Debug output")

@@ -1,44 +1,38 @@
 export const CHAT_MODELS = {
-	// GPT35: {
-	// 	name: "gpt-3.5-turbo",
-	// 	tokenLimit: 4096,
-	// },
-	// GPT35_16K: {
-	// 	name: "gpt-3.5-turbo-16k",
-	// 	tokenLimit: 16384,
-	// },
-	// GPT4: {
-	// 	name: "gpt-4",
-	// 	tokenLimit: 8000,
-	// },
-	GPT_4_0: {
-		name: "gpt-4o",
+	GPT_4O: {
+		name: "openai/gpt-4o",
 		tokenLimit: 128000,
 	},
-	GPT_4_0_MINI: {
-		name: "gpt-4o-mini",
+	GPT_4O_MINI: {
+		name: "openai/gpt-4o-mini",
 		tokenLimit: 128000,
 	},
-	GPT_4_1106_PREVIEW: {
-		name: "gpt-4-1106-preview",
+	GPT_4_TURBO: {
+		name: "openai/gpt-4-turbo",
 		tokenLimit: 128000,
 	},
-	// GPT4_32K: {
-	// 	name: "gpt-4-32k",
-	// 	tokenLimit: 32768,
-	// },
+	CLAUDE_3_OPUS: {
+		name: "anthropic/claude-3-opus",
+		tokenLimit: 200000,
+	},
+	CLAUDE_3_SONNET: {
+		name: "anthropic/claude-3-sonnet",
+		tokenLimit: 180000,
+	},
+	CLAUDE_3_HAIKU: {
+		name: "anthropic/claude-3-haiku",
+		tokenLimit: 150000,
+	},
+	MISTRAL_LARGE: {
+		name: "mistral/mistral-large-latest",
+		tokenLimit: 128000,
+	},
+	GEMINI_PRO: {
+		name: "google/gemini-pro",
+		tokenLimit: 128000,
+	}
 };
 
-export const IMAGE_MODELS = {
-	DALL_E_2: {
-		name: "dall-e-2",
-		// tokenLimit: 128000,
-	},
-	DALL_E_3: {
-		name: "dall-e-3",
-		// tokenLimit: 128000,
-	},
-};
 export function chatModelByName(name: string) {
 	return Object.values(CHAT_MODELS).find((model) => model.name === name);
 }

@@ -115,30 +115,55 @@ export const getCanvasActiveNoteText = (app: App) => {
 	return readNodeContent(canvasNode);
 };
 
-// export const addImageToCanvas = (app: App, imageFileName: string) => {
-// 	const canvas = getActiveCanvas(app);
-// 	if (!canvas) return;
-
-// 	const parentNode = getActiveCanvasNodes(app)?.[0];
-// 	if (!parentNode) return;
-
-// 	const IMAGE_WIDTH = parentNode.width;
-// 	const IMAGE_HEIGHT = IMAGE_WIDTH * (1024 / 1792) + 20;
-
-// 	createNode(
-// 		canvas,
-// 		{
-// 			text: `![[${imageFileName}]]`,
-// 			size: {
-// 				width: IMAGE_WIDTH,
-// 				height: IMAGE_HEIGHT,
-// 			},
-// 		},
-// 		parentNode
-// 	);
-
-// 	canvas.requestSave();
-// };
+/**
+ * Adds an image node to the canvas
+ */
+export function addImageNode(canvas: any, buffer: ArrayBuffer | null, filePath: string, parentNode: any) {
+	const IMAGE_WIDTH = parentNode.width || 300;
+	const IMAGE_HEIGHT = IMAGE_WIDTH * (1024 / 1792) + 20;
+	
+	if (filePath) {
+		// Create a file node with the saved image
+		const node = canvas.createFileNode({
+			file: app.vault.getAbstractFileByPath(filePath),
+			pos: {
+				x: parentNode.x,
+				y: parentNode.y + parentNode.height + 30
+			},
+			size: {
+				width: IMAGE_WIDTH,
+				height: IMAGE_HEIGHT
+			}
+		});
+		
+		return node;
+	} else if (buffer) {
+		// Create a text node with embedded image
+		const node = canvas.createTextNode({
+			text: "Image",
+			pos: {
+				x: parentNode.x,
+				y: parentNode.y + parentNode.height + 30
+			},
+			size: {
+				width: IMAGE_WIDTH,
+				height: IMAGE_HEIGHT
+			}
+		});
+		
+		// Add the image data to the node
+		// This is a simplified version, you might need to adapt this to how your canvas handles embedded images
+		const blob = new Blob([buffer], { type: "image/png" });
+		const url = URL.createObjectURL(blob);
+		
+		// Update the node text to show the image (using markdown image syntax)
+		node.setText(`![Generated Image](${url})`);
+		
+		return node;
+	}
+	
+	return null;
+}
 
 export const getImageSaveFolderPath = async (
 	app: App,

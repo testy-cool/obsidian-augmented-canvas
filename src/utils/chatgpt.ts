@@ -15,10 +15,12 @@ export const streamResponse = async (
 		max_tokens,
 		model,
 		temperature,
+		baseUrl
 	}: {
 		max_tokens?: number;
 		model?: string;
 		temperature?: number;
+		baseUrl?: string;
 	} = {},
 	cb: any
 ) => {
@@ -28,15 +30,18 @@ export const streamResponse = async (
 		max_tokens,
 		temperature,
 		isJSON: false,
+		baseUrl,
 	});
 	// console.log({ messages, max_tokens });
 	const openai = new OpenAI({
 		apiKey: apiKey,
 		dangerouslyAllowBrowser: true,
+		baseURL: baseUrl,
 	});
 
+	// Use the model as is - it already includes the provider prefix
 	const stream = await openai.chat.completions.create({
-		model: model || "gpt-4",
+		model: model || "openai/gpt-4o",
 		messages,
 		stream: true,
 		max_tokens,
@@ -59,11 +64,13 @@ export const getResponse = async (
 		max_tokens,
 		temperature,
 		isJSON,
+		baseUrl,
 	}: {
 		model?: string;
 		max_tokens?: number;
 		temperature?: number;
 		isJSON?: boolean;
+		baseUrl?: string;
 	} = {}
 ) => {
 	logDebug("Calling AI :", {
@@ -72,23 +79,18 @@ export const getResponse = async (
 		max_tokens,
 		temperature,
 		isJSON,
+		baseUrl,
 	});
 
 	const openai = new OpenAI({
 		apiKey: apiKey,
 		dangerouslyAllowBrowser: true,
+		baseURL: baseUrl,
 	});
 
-	// const totalTokens =
-	// 	openaiMessages.reduce(
-	// 		(total, message) => total + (message.content?.length || 0),
-	// 		0
-	// 	) * 2;
-	// console.log({ totalTokens });
-
+	// Use the model as is - it already includes the provider prefix
 	const completion = await openai.chat.completions.create({
-		// model: "gpt-3.5-turbo",
-		model: model || "gpt-4-1106-preview",
+		model: model || "openai/gpt-4o",
 		messages,
 		max_tokens,
 		temperature,
@@ -108,18 +110,22 @@ export const createImage = async (
 	{
 		isVertical = false,
 		model,
+		baseUrl,
 	}: {
 		isVertical?: boolean;
 		model?: string;
+		baseUrl?: string;
 	}
 ) => {
 	logDebug("Calling AI :", {
 		prompt,
 		model,
+		baseUrl,
 	});
 	const openai = new OpenAI({
 		apiKey: apiKey,
 		dangerouslyAllowBrowser: true,
+		baseURL: baseUrl,
 	});
 
 	count++;
